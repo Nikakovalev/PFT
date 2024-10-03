@@ -1,3 +1,5 @@
+**TEMPLATE**
+
 # Personal Finance Tracker
 
 Personal Finance Tracker is an application designed to help users effectively manage their finances. The app allows users to record, search, and filter their financial transactions. It is built using **Internet Computer (DFINITY)** for the backend with **Motoko** and **React** for the frontend.
