@@ -1,0 +1,26 @@
+{
+  "canisters": {
+    "finance_tracker_backend": {
+      "main": "src/finance_tracker_backend/main.mo",
+      "type": "motoko"
+    },
+    "finance_tracker_frontend": {
+      "dependencies": [
+        "finance_tracker_backend"
+      ],
+      "source": [
+        "src/finance_tracker_frontend/dist"
+      ],
+      "type": "assets",
+      "workspace": "finance_tracker_frontend"
+    }
+  },
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "output_env_file": ".env",
+  "version": 1
+}
