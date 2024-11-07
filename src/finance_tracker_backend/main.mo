@@ -1,6 +1,7 @@
 import Http "mo:base/Http";
 import Cryptography "mo:cryptography";
 import Time "mo:base/Time";
+import Text "mo:base/Text";
 
 actor FinanceTracker {
     type Transaction = {
@@ -34,30 +35,77 @@ actor FinanceTracker {
 
     // Fungsi untuk mengirim email menggunakan SendGrid
     private func sendEmail(to: Text, subject: Text, body: Text): async Bool {
-        let url = "https://api.sendgrid.com/v3/mail/send";
-        let headers = [
-            Http.Header.Field("Authorization", "Bearer " # sendGridApiKey),
-            Http.Header.Field("Content-Type", "application/json")
-        ];
+        try {
+            let url = "https://api.sendgrid.com/v3/mail/send";
+            let headers = [
+                Http.Header.Field("Authorization", "Bearer " # sendGridApiKey),
+                Http.Header.Field("Content-Type", "application/json")
+            ];
 
-        let emailData = {
-            "personalizations": [{
-                "to": [{
-                    "email": to
+            let emailData = {
+                "personalizations": [{
+                    "to": [{
+                        "email": to
+                    }],
+                    "subject": subject
                 }],
-                "subject": subject
-            }],
-            "from": {
-                "email": "your-email@example.com" // Ganti dengan alamat email Anda yang terverifikasi di SendGrid
-            },
-            "content": [{
-                "type": "text/plain",
-                "value": body
-            }]
-        };
+                "from": {
+                    "email": "your-email@example.com" // Ganti dengan alamat email Anda yang terverifikasi di SendGrid
+                },
+                "content": [{
+                    "type": "text/plain",
+                    "value": body
+                }]
+            };
 
-        let response = await Http.post(url, headers, Json.serialize(emailData));
-        return response.status == 202; // Mengembalikan true jika email berhasil dikirim
+            let response = await Http.post(url, headers, Json.serialize(emailData));
+            return response.status == 202; // Mengembalikan true jika email berhasil dikirim
+        } catch (e) {
+            error("Error sending email: ", e);
+            return false;
+        }
+    }
+
+    // Fungsi untuk memverifikasi email
+    private func verifyEmail(email: Text): Bool {
+        // Implement email verification logic here
+        return true;
+    }
+
+    // Fungsi untuk menghasilkan dan mengirim OTP
+    public async func sendOTP(username: Text, email: Text): async Int {
+        try {
+            let otp = Cryptography.randomInt(100000, 999999); // Menghasilkan OTP 6 digit
+            otpStore := Array.append(otpStore, otp); // Simpan OTP untuk verifikasi
+            otpEmailStore := Array.append(otpEmailStore, email); // Simpan email terkait dengan OTP
+
+            // Kirim OTP ke email pengguna
+            let subject = "Your OTP Code";
+            let body = "Your OTP code is: " # Int.toText(otp);
+            let emailSent = await sendEmail(email, subject, body);
+
+            if (emailSent) {
+                return otp; // Kembalikan OTP untuk referensi jika email berhasil dikirim
+            } else {
+                return -1; // Mengembalikan -1 jika gagal mengirim email
+            }
+        } catch (e) {
+            error("Error sending OTP: ", e);
+            return -1;
+        }
+    }
+
+    // Fungsi untuk memverifikasi OTP
+    public func verifyOTP(inputOtp: Int, email: Text): Bool {
+        let index = Array.findIndex(otpStore, func(o) { o == inputOtp });
+        let emailIndex = Array.findIndex(otpEmailStore, func(e) { e == email });
+        
+        if (index != null && emailIndex == index) {
+            otpStore := Array.remove(otpStore, index); // Hapus OTP setelah diverifikasi
+            otpEmailStore := Array.remove(otpEmailStore, index); // Hapus email yang sesuai
+            return true; // OTP valid
+        }
+        return false; // OTP tidak valid
     }
 
     public func register(username: Text, password: Text): Int {
@@ -159,36 +207,4 @@ actor FinanceTracker {
             txn.date >= startDate && txn.date <= endDate // Memfilter transaksi berdasarkan rentang tanggal
         });
     }
-
-    // Fungsi untuk menghasilkan dan mengirim OTP
-    public async func sendOTP(username: Text, email: Text): async Int {
-        let otp = Cryptography.randomInt(100000, 999999); // Menghasilkan OTP 6 digit
-        otpStore := Array.append(otpStore, otp); // Simpan OTP untuk verifikasi
-        otpEmailStore := Array.append(otpEmailStore, email); // Simpan email terkait dengan OTP
-
-        // Kirim OTP ke email pengguna
-        let subject = "Your OTP Code";
-        let body = "Your OTP code is: " # Int.toText(otp);
-        let emailSent = await sendEmail(email, subject, body);
-
-        if (emailSent) {
-            return otp; // Kembalikan OTP untuk referensi jika email berhasil dikirim
-        } else {
-            return -1; // Mengembalikan -1 jika gagal mengirim email
-        }
-    }
-
-    // Fungsi untuk memverifikasi OTP
-    public func verifyOTP(inputOtp: Int, email: Text): Bool {
-        let index = Array.findIndex(otpStore, func(o) { o == inputOtp });
-        let emailIndex = Array.findIndex(otpEmailStore, func(e) { e == email });
-        
-        if (index != null && emailIndex == index) {
-            otpStore := Array.remove(otpStore, index); // Hapus OTP setelah diverifikasi
-            otpEmailStore := Array.remove(otpEmailStore, index); // Hapus email yang sesuai
-            return true; // OTP valid
-        }
-        return false; // OTP tidak valid
-    }
 }
-
